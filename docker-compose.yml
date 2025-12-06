@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  typesense:
+    image: typesense/typesense:0.24.0
+    restart: unless-stopped
+    ports:
+      - "8108:8108"
+    environment:
+      - TYPESENSE_DATA_DIR=/data
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY}
+      - TYPESENSE_API_PORT=8108
+    volumes:
+      - ./typesense-data:/data
+
+  app:
+    build: ./app
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - TYPESENSE_HOST=http://typesense:8108
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY}
+      - OPENROUTER_KEY=${OPENROUTER_KEY}
+      - EMBED_MODEL=${EMBED_MODEL}
+    depends_on:
+      - typesense
