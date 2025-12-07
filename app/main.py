@@ -1,12 +1,12 @@
 import os
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from collector import collect_repo
+from collector import collect_local_data  # <- заменили collect_repo
 from embedder import Embedder
 from indexer_typesense import TypesenseIndexer
 from agent_labeler import AgentLabeler
 
-app = FastAPI(title="GH Task Recommender")
+app = FastAPI(title="Local Task Recommender")
 
 TYPESENSE_HOST = os.getenv("TYPESENSE_HOST", "http://localhost:8108")
 TYPESENSE_API_KEY = os.getenv("TYPESENSE_API_KEY", "typesense_key_here")
@@ -19,26 +19,36 @@ agent = AgentLabeler(openrouter_key=os.getenv("OPENROUTER_KEY"))
 class QueryRequest(BaseModel):
     text: str
     top: int = 10
+    collection: str = "local_data"  # <- по умолчанию наша коллекция
 
 @app.post("/collect_and_index")
-def collect_and_index(repo: str = Query(..., description="owner/repo")):
-    owner_repo = repo.strip()
+def collect_and_index():
+
     try:
-        items = collect_repo(owner_repo)
+        items = collect_local_data()
+        if not items:
+            raise HTTPException(status_code=404, detail="Нет данных для индексации")
         texts = [it['text'] for it in items]
         vectors = embedder.encode(texts)
-        indexer.create_collection_if_not_exists(collection_name=owner_repo.replace('/','_'))
-        indexer.upsert_items(collection_name=owner_repo.replace('/','_'), items=items, vectors=vectors)
+        collection_name = "local_data"
+        indexer.create_collection_if_not_exists(collection_name=collection_name)
+        indexer.upsert_items(collection_name=collection_name, items=items, vectors=vectors)
         return {"status":"ok", "count": len(items)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/query")
 def query(req: QueryRequest):
-    vec = embedder.encode([req.text])[0]
-    hits = indexer.search(collection_name=req.dict.get('collection', 'default'), query_vector=vec, top=req.top)
-    return {"query": req.text, "results": hits}
+    try:
+        vec = embedder.encode([req.text])[0]
+        hits = indexer.search(collection_name=req.collection, query_vector=vec, top=req.top)
+        return {"query": req.text, "results": hits}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/label")
-def label(repo: str = Query(...), top:int = 20):
-    return agent.label_candidates_for_repo(repo, top=top)
+def label(top: int = 20):
+
+    items = collect_local_data()
+    collection_name = "local_data"
+    return agent.label_candidates_for_repo(collection_name, top=top)

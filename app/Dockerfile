@@ -6,16 +6,19 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
+COPY . .
 
 ENV TYPESENSE_HOST=localhost
 ENV TYPESENSE_API_KEY=typesense_key_here
 ENV TYPESENSE_COLLECTION=issues
 ENV EMBED_MODEL=all-MiniLM-L6-v2
 
-CMD ["python", "pipeline.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# http://localhost:8000/docs
+# docker-compose up --build
