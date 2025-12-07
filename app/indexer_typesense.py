@@ -1,9 +1,12 @@
+import os
 import typesense
-import time
-from typing import List
+from typing import List, Dict
 
 class TypesenseIndexer:
-    def __init__(self, host="http://localhost:8108", api_key="typesense_key_here", port=8108):
+
+    def __init__(self, host=None, port=8108, api_key=None):
+        host = host or os.getenv("TYPESENSE_HOST", "localhost")
+        api_key = api_key or os.getenv("TYPESENSE_API_KEY", "typesense_key_here")
         self.client = typesense.Client({
             'nodes': [{
                 'host': host.replace('http://','').replace('https://',''),
@@ -14,21 +17,20 @@ class TypesenseIndexer:
             'connection_timeout_seconds': 2
         })
 
-    def create_collection_if_not_exists(self, collection_name="default"):
+    def create_collection_if_not_exists(self, collection_name="default", vector_dim=384):
         try:
             self.client.collections[collection_name].retrieve()
         except Exception:
             schema = {
                 'name': collection_name,
                 'fields': [
-                    {'name':'id','type':'int64'},
+                    {'name':'id','type':'string'},
                     {'name':'number','type':'int32'},
                     {'name':'type','type':'string'},
                     {'name':'title','type':'string'},
                     {'name':'body','type':'string'},
-                    {'name':'labels','type':'string[]'},
-                    {'name':'html_url','type':'string'},
-                    {'name':'vector','type':'float[]', 'num_dim': 384}
+                    {'name':'text','type':'string'},
+                    {'name':'vector','type':'float[]','num_dim': vector_dim}
                 ],
                 'default_sorting_field':'number'
             }
@@ -37,29 +39,27 @@ class TypesenseIndexer:
     def upsert_items(self, collection_name: str, items: List[dict], vectors: List):
         documents = []
         for it, vec in zip(items, vectors):
-            doc = {
-                'id': it['id'],
+            documents.append({
+                'id': str(it['id']),
                 'number': it['number'],
                 'type': it['type'],
                 'title': it['title'][:2000] if it.get('title') else '',
                 'body': it.get('body','')[:16000],
-                'labels': it.get('labels',[]),
-                'html_url': it.get('html_url',''),
-                'vector': vec.tolist() if hasattr(vec, 'tolist') else list(vec)
-            }
-            documents.append(doc)
+                'text': it.get('text','')[:16000],
+                'vector': vec
+            })
+        # батчинг
         chunk = 50
         for i in range(0, len(documents), chunk):
             batch = documents[i:i+chunk]
             self.client.collections[collection_name].documents.import_(batch, {'action':'upsert'})
 
     def search(self, collection_name: str, query_vector, top=10):
-        query_by = "title,body"
         vector_str = "[" + ",".join([str(float(x)) for x in query_vector]) + "]"
         search_parameters = {
             'q': '*',
-            'query_by': query_by,
-            'vector_query': f"vector:({vector_str}),k:{top}"
+            'query_by': 'text',
+            'vector_query': f'vector:({vector_str}),k:{top}'
         }
         res = self.client.collections[collection_name].documents.search(search_parameters)
         hits = []

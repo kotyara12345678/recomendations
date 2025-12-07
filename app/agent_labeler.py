@@ -1,60 +1,32 @@
-import os, json, re
-from typing import List, Dict
-from dotenv import load_dotenv
-load_dotenv()
+import re
+from indexer_typesense import TypesenseIndexer
+from embedder import Embedder
 
-OPENROUTER_KEY = os.getenv('OPENROUTER_KEY')
-
-CLOSE_RE = re.compile(r"\b(?:close[sd]?|fix(?:es)?|resolve[sd]?)\s+(?:#(\d+)|https?://\S+/issues/(\d+))", re.I)
 REF_RE = re.compile(r"#(\d+)")
 
-def extract_issue_numbers_from_text(text: str):
-    nums = set()
-    if not text:
-        return []
-    for m in CLOSE_RE.finditer(text):
-        g1 = m.group(1) or m.group(2)
-        if g1:
-            nums.add(int(g1))
-    for m in REF_RE.finditer(text):
-        nums.add(int(m.group(1)))
-    return sorted(nums)
+def extract_numbers(text):
+    return [int(m.group(1)) for m in REF_RE.finditer(text or "")]
 
 class AgentLabeler:
-    def init(self, openrouter_key: str = None):
-        self.openrouter_key = openrouter_key or OPENROUTER_KEY
+    def __init__(self, indexer: TypesenseIndexer, collection_name: str, embedder: Embedder):
+        self.indexer = indexer
+        self.collection_name = collection_name
+        self.embedder = embedder
 
-    def label_candidates_for_repo(self, repo: str, top: int = 20):
-        from collector import collect_repo
-        from embedder import Embedder
-        from indexer_typesense import TypesenseIndexer
+    def index_issues(self, issues):
+        vectors = self.embedder.encode([i['text'] for i in issues])
+        self.indexer.create_collection_if_not_exists(self.collection_name, vector_dim=len(vectors[0]))
+        self.indexer.upsert_items(self.collection_name, issues, vectors)
 
-        items = collect_repo(repo)
-        issues = {it['number']: it for it in items if it['type']=='issue'}
-        prs = [it for it in items if it['type']=='pr']
+    def label_single(self, issue, top=10):
+        vec = self.embedder.encode([issue['text']])[0]
+        hits = self.indexer.search(self.collection_name, vec, top=top)
+        similar = [int(h['document']['number']) for h in hits if int(h['document']['number']) != issue['number']]
+        inline_refs = extract_numbers(issue['text'])
+        return {"issue_number": issue['number'], "inline_refs": inline_refs, "similar": similar}
 
-        # heuristics
-        mapping = {}
-        for pr in prs:
-            nums = extract_issue_numbers_from_text(pr.get('body','') or '') + extract_issue_numbers_from_text(pr.get('title','') or '')
-            nums = sorted(set(n for n in nums if n in issues))
-            mapping[pr['number']] = nums
-
-        embedder = Embedder()
-        vectors = embedder.encode([p['text'] for p in prs])
-        ts = TypesenseIndexer(host=os.getenv('TYPESENSE_HOST','http://localhost:8108'),
-                              api_key=os.getenv('TYPESENSE_API_KEY','typesense_key_here'))
-        ts.create_collection_if_not_exists(collection_name=repo.replace('/','_'))
-        candidates = {}
-        for pr, vec in zip(prs, vectors):
-            hits = ts.search(collection_name=repo.replace('/','_'), query_vector=vec, top=top)
-            hits_nums = [h['document'].get('number') for h in hits if h['document'].get('type')=='issue']
-            candidates[pr['number']] = hits_nums
-
-        combined = {}
-        for pr in prs:
-            combined[pr['number']] = {
-                'heuristic': mapping.get(pr['number'], []),
-                'candidates': candidates.get(pr['number'], [])
-            }
-        return combined
+    def label_all(self, issues, top=10):
+        result = {}
+        for i in issues:
+            result[i['number']] = self.label_single(i, top=top)
+        return result
