@@ -6,3 +6,4 @@ typesense
 tqdm
 pydantic
 pandas
+pyarrow

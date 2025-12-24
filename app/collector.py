@@ -1,67 +1,61 @@
-import os
-import json
+from pathlib import Path
 import pandas as pd
-from typing import List, Dict
+import json
 
-DATA_DIR = "data"
 
-def load_csv(path: str) -> List[Dict]:
+def load_parquet(path: Path):
+    df = pd.read_parquet(path)
+    return normalize_df(df)
 
+
+def load_csv(path: Path):
     df = pd.read_csv(path)
+    return normalize_df(df)
+
+
+def load_json(path: Path):
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    if isinstance(data, dict):
+        data = data.get("items", [])
+
+    df = pd.DataFrame(data)
+    return normalize_df(df)
+
+
+def normalize_df(df: pd.DataFrame):
+
+    required = {"title", "body"}
+    if not required.issubset(df.columns):
+        raise ValueError(f"Ожидались поля {required}, получены {df.columns}")
+
+    df = df.fillna("")
+
     records = []
     for i, row in df.iterrows():
-        title = str(row.get("title", "")).strip()
-        body = str(row.get("body", "")).strip()
-        if not title and not body:
-            continue
         records.append({
-            "id": f"csv-{os.path.basename(path)}-{i}",
-            "number": i + 1,
-            "type": "issue",
-            "title": title,
-            "body": body,
-            "text": f"{title}\n\n{body}"
+            "id": str(i),
+            "title": str(row["title"]),
+            "body": str(row["body"]),
         })
+
     return records
 
-def load_json(path: str) -> List[Dict]:
 
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    records = []
-    for i, item in enumerate(data):
-        title = str(item.get("title", "")).strip()
-        body = str(item.get("body", "")).strip()
-        if not title and not body:
-            continue
-        records.append({
-            "id": f"json-{os.path.basename(path)}-{i}",
-            "number": i + 1,
-            "type": "issue",
-            "title": title,
-            "body": body,
-            "text": f"{title}\n\n{body}"
-        })
-    return records
+def collect_local_data(data_dir="data"):
+    data_dir = Path(data_dir)
+    all_records = []
 
-def collect_local_data() -> List[Dict]:
+    loaders = {
+        ".parquet": load_parquet,
+        ".csv": load_csv,
+        ".json": load_json,
+    }
 
-    all_items = []
-    if not os.path.exists(DATA_DIR):
-        print(f"[collector] Папка {DATA_DIR} не найдена")
-        return all_items
+    for file in data_dir.iterdir():
+        if file.suffix in loaders:
+            print(f" Загружаю {file.name}")
+            all_records.extend(loaders[file.suffix](file))
 
-    for filename in os.listdir(DATA_DIR):
-        path = os.path.join(DATA_DIR, filename)
-        if filename.endswith(".csv"):
-            all_items.extend(load_csv(path))
-        elif filename.endswith(".json"):
-            all_items.extend(load_json(path))
-        else:
-            print(f"[collector] Пропускаю неподдерживаемый файл: {filename}")
-
-    for i, item in enumerate(all_items):
-        item["number"] = i + 1
-
-    print(f"[collector] Загружено записей: {len(all_items)}")
-    return all_items
+    return all_records
