@@ -5,15 +5,12 @@ services:
     image: typesense/typesense:0.24.0
     container_name: typesense
     restart: unless-stopped
-
     command: >
       --data-dir /data
       --api-key ${TYPESENSE_API_KEY}
       --enable-cors true
-
     ports:
       - "8108:8108"
-
     volumes:
       - typesense-data:/data
 
@@ -23,21 +20,16 @@ services:
       dockerfile: Dockerfile
     container_name: recommendation-app
     restart: unless-stopped
-
     command: uvicorn main:app --host 0.0.0.0 --port 8000
-
     ports:
       - "8000:8000"
-
     environment:
       TYPESENSE_HOST: http://typesense:8108
       TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
       TYPESENSE_COLLECTION: issues
       EMBED_MODEL: ${EMBED_MODEL}
-
     volumes:
       - ./app/data:/app/data
-
     depends_on:
       - typesense
 

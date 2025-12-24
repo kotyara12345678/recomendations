@@ -8,15 +8,18 @@ from agent_labeler import AgentLabeler
 
 app = FastAPI(title="Local Task Recommender")
 
+# Переменные окружения
 TYPESENSE_HOST = os.getenv("TYPESENSE_HOST", "http://localhost:8108")
-TYPESENSE_API_KEY = os.getenv("TYPESENSE_API_KEY", "typesense_key_here")
+TYPESENSE_API_KEY = os.getenv("TYPESENSE_API_KEY", "12345678")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 COLLECTION_NAME = "local_data"
 
+# Инициализация компонентов
 embedder = Embedder(model_name=EMBED_MODEL)
 indexer = TypesenseIndexer(host=TYPESENSE_HOST, api_key=TYPESENSE_API_KEY)
 agent = AgentLabeler(indexer=indexer, collection_name=COLLECTION_NAME, embedder=embedder)
 
+# Pydantic-модель для запросов
 class QueryRequest(BaseModel):
     text: str
     top: int = 10
@@ -33,7 +36,6 @@ def collect_and_index():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Эндпоинт для запроса похожих задач
 @app.post("/query")
 def query(req: QueryRequest):
     try:
