@@ -2,34 +2,43 @@ import os
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict
+
 from collector import collect_local_data
 from embedder import Embedder
 from indexer_typesense import TypesenseIndexer
 from agent_labeler import AgentLabeler
 
+# Создаём объект FastAPI
 app = FastAPI(title="Local Task Recommender")
 
+# Настройки
 TYPESENSE_HOST = os.getenv("TYPESENSE_HOST", "typesense")
 TYPESENSE_API_KEY = os.getenv("TYPESENSE_API_KEY", "12345678")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 COLLECTION_NAME = os.getenv("TYPESENSE_COLLECTION", "local_data")
 
+# Инициализация компонентов
 embedder = Embedder(model_name=EMBED_MODEL)
 indexer = TypesenseIndexer(host=TYPESENSE_HOST, api_key=TYPESENSE_API_KEY)
 agent = AgentLabeler(indexer=indexer, collection_name=COLLECTION_NAME, embedder=embedder)
 
+# Модель запроса
 class QueryRequest(BaseModel):
     text: str
     top: int = 10
     collection: str = COLLECTION_NAME
 
+# Подготовка данных для индексации
 def prepare_items_for_agent(items: List[Dict]) -> List[Dict]:
-
     for idx, item in enumerate(items, start=1):
         item["number"] = idx
         item["text"] = f"{item.get('title','')}. {item.get('body','')}"
         item["type"] = "task"
     return items
+
+# ========================
+# Эндпоинты
+# ========================
 
 @app.post("/collect_and_index")
 def collect_and_index():
@@ -42,7 +51,7 @@ def collect_and_index():
 
         # Создаём коллекцию, если она ещё не создана
         if not indexer.collection_exists(COLLECTION_NAME):
-            indexer.create_collection(collection_name=COLLECTION_NAME)
+            indexer.create_collection_if_not_exists(collection_name=COLLECTION_NAME)
 
         # Индексация через агент
         agent.index_issues(items)

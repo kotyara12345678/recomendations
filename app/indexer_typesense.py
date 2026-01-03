@@ -81,7 +81,7 @@ class TypesenseIndexer:
                 {
                     "collection": collection_name,
                     "q": "*",
-                    "vector_query": f"vector:({vector_str}),k:{top}"
+                    "vector_query": f"vector:({vector_str}, k:{top})"
                 }
             ]
         }
