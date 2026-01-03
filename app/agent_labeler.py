@@ -15,7 +15,7 @@ class AgentLabeler:
         self.embedder = embedder
 
     def index_issues(self, issues):
-        vectors = self.embedder.encode([i['text'] for i in issues])
+        vectors = self.embedder.encode([i['text'] for i in issues])   #
         self.indexer.create_collection_if_not_exists(
             self.collection_name,
             vector_dim=len(vectors[0])

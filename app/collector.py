@@ -2,16 +2,14 @@ from pathlib import Path
 import pandas as pd
 import json
 
-
 def load_parquet(path: Path):
     df = pd.read_parquet(path)
     return normalize_df(df)
 
-
 def load_csv(path: Path):
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, encoding="utf-8-sig")
+    print(f"Файл {path.name} загружен, колонки: {df.columns.tolist()}")
     return normalize_df(df)
-
 
 def load_json(path: Path):
     with open(path, encoding="utf-8") as f:
@@ -23,9 +21,7 @@ def load_json(path: Path):
     df = pd.DataFrame(data)
     return normalize_df(df)
 
-
 def normalize_df(df: pd.DataFrame):
-
     required = {"title", "body"}
     if not required.issubset(df.columns):
         raise ValueError(f"Ожидались поля {required}, получены {df.columns}")
@@ -41,7 +37,6 @@ def normalize_df(df: pd.DataFrame):
         })
 
     return records
-
 
 def collect_local_data(data_dir="data"):
     data_dir = Path(data_dir)

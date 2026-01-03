@@ -24,10 +24,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      TYPESENSE_HOST: http://typesense:8108
-      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
-      TYPESENSE_COLLECTION: issues
-      EMBED_MODEL: ${EMBED_MODEL}
+      - TYPESENSE_HOST=typesense
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY}
+      - TYPESENSE_COLLECTION=local_data
+      - EMBED_MODEL=${EMBED_MODEL}
     volumes:
       - ./app/data:/app/data
     depends_on:

@@ -48,23 +48,30 @@ class TypesenseIndexer:
                 'text': it.get('text','')[:16000],
                 'vector': vec
             })
-        # батчинг
+
         chunk = 50
         for i in range(0, len(documents), chunk):
             batch = documents[i:i+chunk]
             self.client.collections[collection_name].documents.import_(batch, {'action':'upsert'})
 
     def search(self, collection_name: str, query_vector, top=10):
-        vector_str = "[" + ",".join([str(float(x)) for x in query_vector]) + "]"
-        search_parameters = {
-            'q': '*',
-            'query_by': 'text',
-            'vector_query': f'vector:({vector_str}),k:{top}'
-        }
-        res = self.client.collections[collection_name].documents.search(search_parameters)
+        vector_str = "[" + ",".join(map(str, query_vector)) + "]"
+
+        res = self.client.multi_search.perform({
+            "searches": [
+                {
+                    "collection": collection_name,
+                    "q": "",
+                    "vector_query": f"vector:({vector_str}),k:{top}"
+                }
+            ]
+        })
+
         hits = []
-        for hit in res.get('hits', []):
-            doc = hit.get('document', {})
-            score = hit.get('vector_score') or hit.get('score') or 0.0
-            hits.append({'score': score, 'document': doc})
+        for hit in res["results"][0].get("hits", []):
+            hits.append({
+                "score": hit.get("vector_distance"),
+                "document": hit["document"]
+            })
+
         return hits

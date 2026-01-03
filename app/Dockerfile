@@ -19,9 +19,9 @@ RUN /root/.cargo/bin/uv pip install --system --no-cache -r requirements.txt \
 COPY . .
 
 ENV TYPESENSE_HOST=typesense \
-    TYPESENSE_API_KEY=typesense_key_here \
+    TYPESENSE_API_KEY=12345678 \
     TYPESENSE_COLLECTION=issues \
-    EMBED_MODEL=all-MiniLM-L6-v2
+    EMBED_MODEL=all-mpnet-base-v2
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
@@ -29,7 +29,7 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 # docker-compose build app
 # https://github.com/kotyara12345678/recomendations
 
-# docker exec -it a45c23f355b9_recommendation-app /bin/sh
+# docker exec -it a45c23f355b9_recommendation-app /bin/sh подключение к контейнеру
 
 # python -c "from main import app; print(app)"
 
