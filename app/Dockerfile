@@ -21,7 +21,7 @@ COPY . .
 ENV TYPESENSE_HOST=typesense \
     TYPESENSE_API_KEY=12345678 \
     TYPESENSE_COLLECTION=issues \
-    EMBED_MODEL=all-mpnet-base-v2
+    EMBED_MODEL=all-MiniLM-L6-v2
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 

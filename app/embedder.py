@@ -4,7 +4,7 @@ from typing import List
 
 class Embedder:
     def __init__(self, model_name: str = None):
-        model_name = model_name or os.getenv('EMBED_MODEL', 'all-mpnet-base-v2')
+        model_name = model_name or os.getenv('EMBED_MODEL', 'all-MiniLM-L6-v2')
         self.model = SentenceTransformer(model_name)
 
     def encode(self, texts: List[str]) -> List[List[float]]:
