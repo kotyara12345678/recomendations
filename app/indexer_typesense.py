@@ -34,7 +34,7 @@ class TypesenseIndexer:
         schema = {
             'name': collection_name,
             'fields': [
-                {'name':'id','type':'string'},
+                {'name':'doc_id','type':'string'},  # уникальный идентификатор
                 {'name':'number','type':'int32'},
                 {'name':'type','type':'string'},
                 {'name':'title','type':'string'},
@@ -49,9 +49,9 @@ class TypesenseIndexer:
 
     def upsert_items(self, collection_name: str, items: List[dict], vectors: List[List[float]]):
         documents = []
-        for it, vec in zip(items, vectors):
+        for idx, (it, vec) in enumerate(zip(items, vectors), start=1):
             documents.append({
-                'id': str(it['id']),
+                'doc_id': str(it.get('doc_id', idx)),  # автоматически генерируем, если нет
                 'number': it['number'],
                 'type': it.get('type','task'),
                 'title': it.get('title','')[:2000],
@@ -64,7 +64,6 @@ class TypesenseIndexer:
         for i in range(0, len(documents), chunk):
             batch = documents[i:i+chunk]
             res = self.client.collections[collection_name].documents.import_(batch, {'action':'upsert'})
-            # res уже список словарей, split не нужен
             for status in res:
                 if isinstance(status, str):
                     status = json.loads(status)

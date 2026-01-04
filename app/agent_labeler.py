@@ -15,23 +15,43 @@ class AgentLabeler:
         self.embedder = embedder
 
     def index_issues(self, issues):
-        vectors = self.embedder.encode([i['text'] for i in issues])   #
-        self.indexer.create_collection_if_not_exists(
-            self.collection_name,
-            vector_dim=len(vectors[0])
-        )
+
+        if not issues:
+            return  # ничего не делаем, если список пуст
+        texts = [i.get('text','') for i in issues]
+        vectors = self.embedder.encode(texts)
+        if not vectors:
+            return
         self.indexer.upsert_items(self.collection_name, issues, vectors)
 
     def label_single(self, issue, top=10):
-        vec = self.embedder.encode([issue['text']])[0]
+
+        if 'text' not in issue or 'number' not in issue:
+            return {"issue_number": None, "inline_refs": [], "similar": []}
+
+        vec = self.embedder.encode([issue['text']])
+        if not vec or not isinstance(vec[0], list):
+            return {"issue_number": issue['number'], "inline_refs": [], "similar": []}
+
+        vec = vec[0]
         hits = self.indexer.search(self.collection_name, vec, top=top)
-        similar = [int(h['document']['number']) for h in hits if int(h['document']['number']) != issue['number']]
-        inline_refs = extract_numbers(issue['text'])
+
+        similar = [
+            int(h['document'].get('number', -1))
+            for h in hits
+            if h['document'].get('number') != issue['number']
+        ]
+
+        inline_refs = extract_numbers(issue.get('text',''))
 
         return {"issue_number": issue['number'], "inline_refs": inline_refs, "similar": similar}
 
     def label_all(self, issues, top=10):
+
         result = {}
         for i in issues:
-            result[i['number']] = self.label_single(i, top=top)
+            key = i.get('number', None)
+            if key is None:
+                continue  # пропускаем без номера
+            result[key] = self.label_single(i, top=top)
         return result

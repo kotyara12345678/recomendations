@@ -8,16 +8,13 @@ from embedder import Embedder
 from indexer_typesense import TypesenseIndexer
 from agent_labeler import AgentLabeler
 
-# Создаём объект FastAPI
 app = FastAPI(title="Local Task Recommender")
 
-# Настройки
 TYPESENSE_HOST = os.getenv("TYPESENSE_HOST", "typesense")
 TYPESENSE_API_KEY = os.getenv("TYPESENSE_API_KEY", "12345678")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "all-MiniLM-L6-v2")
 COLLECTION_NAME = os.getenv("TYPESENSE_COLLECTION", "local_data")
 
-# Инициализация компонентов
 embedder = Embedder(model_name=EMBED_MODEL)
 indexer = TypesenseIndexer(host=TYPESENSE_HOST, api_key=TYPESENSE_API_KEY)
 agent = AgentLabeler(indexer=indexer, collection_name=COLLECTION_NAME, embedder=embedder)
@@ -28,7 +25,7 @@ class QueryRequest(BaseModel):
     top: int = 10
     collection: str = COLLECTION_NAME
 
-# Подготовка данных для индексации
+
 def prepare_items_for_agent(items: List[Dict]) -> List[Dict]:
     for idx, item in enumerate(items, start=1):
         item["number"] = idx
@@ -36,9 +33,6 @@ def prepare_items_for_agent(items: List[Dict]) -> List[Dict]:
         item["type"] = "task"
     return items
 
-# ========================
-# Эндпоинты
-# ========================
 
 @app.post("/collect_and_index")
 def collect_and_index():
@@ -49,11 +43,9 @@ def collect_and_index():
 
         items = prepare_items_for_agent(items)
 
-        # Создаём коллекцию, если она ещё не создана
         if not indexer.collection_exists(COLLECTION_NAME):
             indexer.create_collection_if_not_exists(collection_name=COLLECTION_NAME)
 
-        # Индексация через агент
         agent.index_issues(items)
         return {"status": "ok", "count": len(items)}
 
@@ -71,7 +63,18 @@ def query(req: QueryRequest):
             vec = vec[0]  # получаем вектор из списка
 
         hits = indexer.search(collection_name=req.collection, query_vector=vec, top=req.top)
-        return {"query": req.text, "results": hits}
+
+        clean_hits = []
+        for h in hits:
+            doc = h["document"]
+            clean_doc = {
+                "number": doc.get("number"),
+                "title": doc.get("title"),
+                "body": doc.get("body")
+            }
+            clean_hits.append({"score": h["score"], "document": clean_doc})
+
+        return {"query": req.text, "results": clean_hits}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
