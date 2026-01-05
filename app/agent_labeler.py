@@ -17,7 +17,7 @@ class AgentLabeler:
     def index_issues(self, issues):
 
         if not issues:
-            return  # ничего не делаем, если список пуст
+            return
         texts = [i.get('text','') for i in issues]
         vectors = self.embedder.encode(texts)
         if not vectors:
@@ -52,6 +52,6 @@ class AgentLabeler:
         for i in issues:
             key = i.get('number', None)
             if key is None:
-                continue  # пропускаем без номера
+                continue
             result[key] = self.label_single(i, top=top)
         return result

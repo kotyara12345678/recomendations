@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   typesense:
     image: typesense/typesense:0.24.0
@@ -32,6 +30,17 @@ services:
       - ./app/data:/app/data
     depends_on:
       - typesense
+
+  trainer:
+    build:
+      context: ./project_root
+      dockerfile: Dockerfile
+    container_name: trainer
+    restart: "no"
+    environment:
+      - EMBED_MODEL=all-MiniLM-L6-v2
+    volumes:
+      - ./project_root/data:/app/data
 
 volumes:
   typesense-data:
