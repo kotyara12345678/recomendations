@@ -13,7 +13,7 @@ dependencies = [
   "tqdm>=4.66.0",
 ]
 
-[project.scripts]
+[tool.uv.scripts]
 prepare-dataset = "src.prepare_dataset:main"
 train-model = "src.train_model:main"
 generate-embeddings = "src.generate_embeddings:main"
