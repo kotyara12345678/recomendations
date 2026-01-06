@@ -39,6 +39,7 @@ services:
       dockerfile: Dockerfile
     container_name: trainer
     restart: "no"
+    command: [ "tail", "-f", "/dev/null" ]
     environment:
       - EMBED_MODEL=all-MiniLM-L6-v2
       - TYPESENSE_HOST=typesense
