@@ -13,14 +13,14 @@ This project implements a full ML pipeline for training a recommendation model b
 
 ### 1. Prepare dataset (create pairs.jsonl)
 
-`docker exec -it trainer uv run prepare-dataset`
+`docker exec -it trainer uv run src/prepare_dataset.py`
 Output: ML/data/pairs.jsonl
 
 ---
 
 ### 2. Train the model
 
-`docker exec -it trainer uv run train-model`
+`docker exec -it trainer uv run src/train_model.py`
 Output: ML/models/fine_tuned/
 
 ---
