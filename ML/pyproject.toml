@@ -1,0 +1,20 @@
+[project]
+name = "ml-trainer"
+version = "0.1.0"
+description = "Fine-tuning MiniLM on custom issue dataset"
+requires-python = ">=3.10"
+
+dependencies = [
+  "sentence-transformers>=3.0.0",
+  "torch>=2.0.0",
+  "numpy>=1.26.0",
+  "typesense>=0.21.0",
+  "pyyaml>=6.0.0",
+  "tqdm>=4.66.0",
+]
+
+[project.scripts]
+prepare-dataset = "src.prepare_dataset:main"
+train-model = "src.train_model:main"
+generate-embeddings = "src.generate_embeddings:main"
+upload-to-typesense = "src.upload_to_typesense:main"

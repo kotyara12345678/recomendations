@@ -1,0 +1,7 @@
+model_name: "sentence-transformers/all-MiniLM-L6-v2"
+output_path: "models/fine_tuned"
+
+batch_size: 64
+epochs: 1
+warmup_ratio: 0.1
+num_workers: 2

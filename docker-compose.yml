@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   typesense:
     image: typesense/typesense:0.24.0
@@ -33,14 +35,21 @@ services:
 
   trainer:
     build:
-      context: ./project_root
+      context: ./ML
       dockerfile: Dockerfile
     container_name: trainer
     restart: "no"
     environment:
       - EMBED_MODEL=all-MiniLM-L6-v2
+      - TYPESENSE_HOST=typesense
+      - TYPESENSE_API_KEY=${TYPESENSE_API_KEY}
     volumes:
-      - ./project_root/data:/app/data
+      - ./ML/data:/app/data
+      - ./ML/configs:/app/configs
+      - ./ML/src:/app/src
+      - ./ML/models:/app/models
+    depends_on:
+      - typesense
 
 volumes:
   typesense-data:
