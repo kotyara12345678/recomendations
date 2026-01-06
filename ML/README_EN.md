@@ -90,4 +90,4 @@ The collection is created automatically during embedding upload.
 
 ##  Support
 
-If something breaks — check logs or restart trainer.
+If something breaks — check logs or restart trainer!
