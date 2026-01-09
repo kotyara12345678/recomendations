@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict
 
-from collector import collect_local_data
+from app.data.collector.collector import collect_local_data
 from embedder import Embedder
 from indexer_typesense import TypesenseIndexer
 from agent_labeler import AgentLabeler
